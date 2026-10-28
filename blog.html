@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#173d35">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Mi cancionero de fe · Blog</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;background:#f7f5f0;color:#243a34;font:16px/1.7 system-ui,sans-serif}
+    header{background:#173d35;color:#fff;padding:28px max(24px,calc((100% - 860px)/2));text-align:center}
+    .brand{font-family:Georgia,serif;font-size:30px}
+    .brand small{display:block;font:10px system-ui;letter-spacing:.24em;color:#bcd0c4;margin-top:6px;text-transform:uppercase}
+    main{max-width:860px;margin:0 auto;padding:40px 24px 80px;display:flex;flex-direction:column;gap:28px}
+    .hero{text-align:center;display:flex;flex-direction:column;gap:10px}
+    .eyebrow{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:#a77d48;font-weight:700}
+    h1{font-family:Georgia,serif;font-weight:400;font-size:clamp(32px,6vw,56px);margin:0}
+    .sub{margin:0;color:#5f6f68}
+    .list{display:flex;flex-direction:column;gap:18px}
+    .card{background:#fff;border:1px solid #e6e3dc;border-radius:16px;box-shadow:0 30px 60px rgba(23,61,53,.05);overflow:hidden}
+    .card-header{display:flex;flex-direction:column;gap:6px;padding:28px 32px 0}
+    .card-body{padding:18px 32px 32px;display:flex;flex-direction:column;gap:18px}
+    .title{font-family:Georgia,serif;font-size:clamp(26px,4vw,38px);margin:0}
+    .meta{color:#7a867f;font-size:14px}
+    .lyrics{white-space:pre-wrap;font-family:Georgia,serif;font-size:clamp(18px,2.2vw,22px);line-height:1.9}
+    .empty{background:#fff;border:1px dashed #d7d3c9;border-radius:16px;padding:60px 24px;text-align:center;display:flex;flex-direction:column;gap:10px;color:#6f7a74}
+    .empty h2{font-family:Georgia,serif;font-weight:400;font-size:30px;margin:0;color:#243a34}
+    footer{max-width:860px;margin:0 auto;padding:0 24px 40px;text-align:center;color:#7a867f;font-size:14px}
+    .back{display:inline-flex;align-items:center;gap:8px;margin:10px auto 0;color:#426e5b;text-decoration:none;font-weight:600}
+    .back:hover{text-decoration:underline}
+    @media(max-width:640px){.card-header,.card-body{padding:22px}}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">♫ &nbsp; Mi cancionero de fe <small>UN ESPACIO PARA ALABAR</small></div>
+  </header>
+  <main>
+    <section class="hero">
+      <div class="eyebrow">BLOG · SOLO LECTURA</div>
+      <h1>Coros para alabar</h1>
+      <p class="sub">Un vistazo a las letras que han sido compartidas para meditar y cantar.</p>
+    </section>
+    <section id="list" class="list"></section>
+    <section id="empty" class="empty" hidden>
+      <h2>Aún no hay coros publicados</h2>
+      <p>Cuando se marque algún coro como "Publicar en el blog", aparecerá aquí.</p>
+    </section>
+  </main>
+  <footer>
+    <div>Este espacio es de solo lectura. No se puede editar ni descargar desde aquí.</div>
+    <a class="back" href="https://rosmeloracon-blip.github.io/Mi-Cancionero/">← Volver al cancionero</a>
+  </footer>
+  <script>
+    (() => {
+      const CFG = { url: 'https://ldzpeyqwqpmwbtvrqjlg.supabase.co', key: 'sb_publishable_ljESlV3AsuM1v7ooYOJo8g_33J1emj4' };
+      const $ = s => document.querySelector(s);
+      const esc = s => String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+      const list = $('#list');
+      const empty = $('#empty');
+
+      async function load() {
+        try {
+          const res = await fetch(CFG.url + '/rest/v1/songs?select=id,title,song_key,body,fragments,updated_at,published_in_blog&published_in_blog=eq.true&deleted=eq.false&order=updated_at.desc', {
+            headers: { apikey: CFG.key, 'Accept': 'application/json' }
+          });
+          if (!res.ok) throw new Error('No se pudo cargar');
+          const rows = await res.json();
+          if (!rows.length) { empty.hidden = false; return; }
+          list.innerHTML = rows.map(r => `
+            <article class="card">
+              <header class="card-header">
+                <div class="eyebrow">CORO</div>
+                <h2 class="title">${esc(r.title)}</h2>
+                <div class="meta">${r.song_key ? 'Tono o acordes: ' + esc(r.song_key) : 'Sin tono indicado'}</div>
+              </header>
+              <div class="card-body">
+                <div class="lyrics">${esc(r.body)}</div>
+                ${(Array.isArray(r.fragments) && r.fragments.length) ? '<div class="eyebrow">FRAGMENTOS</div>' + r.fragments.filter(f=>typeof f==='string').map(f=>'<div class="card" style="box-shadow:none"><div class="card-body"><div class="lyrics" style="font-size:clamp(17px,2vw,19px)">'+esc(f)+'</div></div></div>').join('') : ''}
+              </div>
+            </article>
+          `).join('');
+        } catch (e) {
+          list.innerHTML = '<article class="card"><div class="card-body"><p class="sub">No se pudieron cargar los coros publicados en este momento.</p></div></article>';
+        }
+      }
+
+      document.addEventListener('contextmenu', e => e.preventDefault());
+      load();
+    })();
+  </script>
+</body>
+</html>

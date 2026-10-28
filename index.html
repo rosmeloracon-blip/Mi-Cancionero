@@ -196,7 +196,8 @@ function rowToSong(r) {
     key: r.song_key || '',
     body: r.body || '',
     fragments: Array.isArray(r.fragments) ? r.fragments.filter(x => typeof x === 'string') : [],
-    updatedAt: r.updated_at || nowISO()
+    updatedAt: r.updated_at || nowISO(),
+    published: !!r.published_in_blog
   };
 }
 
@@ -209,7 +210,8 @@ function songToRow(s) {
     body: s.body || '',
     fragments: s.fragments || [],
     updated_at: s.updatedAt || nowISO(),
-    deleted: false
+    deleted: false,
+    published_in_blog: !!s.published
   };
 }
 
@@ -246,8 +248,13 @@ async function syncNow() {
     }
 
     for (const s of songs.slice()) {
-      if (!cloud.has(s.id)) {
+      const cr = cloud.get(s.id);
+      if (!cr) {
         if (time(s.updatedAt) === 0) s.updatedAt = nowISO();
+        push.set(s.id, songToRow(s));
+        continue;
+      }
+      if (time(s.updatedAt) > time(cr.updated_at) && (!push.has(s.id))) {
         push.set(s.id, songToRow(s));
       }
     }
@@ -311,7 +318,20 @@ function render() {
 
   $('#main').innerHTML = `<div class="eyebrow">MI CANCIÓN</div><div class="hero" style="margin:0"><div><h2>${esc(s.title)}</h2><p class="sub">${esc(s.key || 'Sin tono indicado')}</p></div><div class="actions"><button class="plain" onclick="openEditor(true)">Editar</button><button class="plain" onclick="removeSong()">Eliminar</button></div></div><div class="tabs"><button class="tab ${tab === 'letra' ? 'active' : ''}" onclick="switchTab('letra')">Letra</button><button class="tab ${tab === 'audio' ? 'active' : ''}" onclick="switchTab('audio')">Grabaciones</button><button class="tab ${tab === 'cortos' ? 'active' : ''}" onclick="switchTab('cortos')">Fragmentos</button></div><div id="content"></div>`;
 
-  if (tab === 'letra') $('#content').innerHTML = `<p class="muted">Tu letra, lista para cantar.</p><div class="lyrics">${esc(s.body)}</div>`;
+  if (tab === 'letra') {
+    $('#content').innerHTML = `<p class="muted">Tu letra, lista para cantar.</p><div class="lyrics">${esc(s.body)}</div><div style="margin-top:24px"><label style="display:flex;align-items:center;gap:10px;font-weight:600"><input type="checkbox" id="publishBlog" ${s.published ? 'checked' : ''} style="width:auto"> Publicar en el blog</label><p class="muted" style="margin:6px 0 0 26px">Aparecerá en <a href="blog.html" target="_blank" rel="noopener">blog.html</a> sin iniciar sesión. Solo lectura.</p></div>`;
+    setTimeout(() => {
+      const cb = $('#publishBlog');
+      if (!cb) return;
+      cb.onchange = () => {
+        const song = songs.find(x => x.id === selected);
+        if (!song) return;
+        song.published = cb.checked;
+        song.updatedAt = nowISO();
+        save();
+      };
+    }, 0);
+  }
 
   if (tab === 'cortos') {
     $('#content').innerHTML = `<h3>Crear un fragmento</h3><p class="muted">Copia una estrofa de la letra o escríbela aquí para guardarla por separado.</p><textarea id="fragment" placeholder="Escribe una estrofa o un coro…"></textarea><button class="secondary" onclick="addFragment()">Guardar fragmento</button><div id="fragments">${(s.fragments || []).map((x, i) => `<div class="card"><div class="lyrics" style="font-size:17px">${esc(x)}</div><div class="actions"><button class="plain" onclick="copyFragment(${i})">Copiar texto</button><button class="plain" onclick="deleteFragment(${i})">Eliminar</button></div></div>`).join('')}</div>`;
